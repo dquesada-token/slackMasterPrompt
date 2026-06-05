@@ -1,16 +1,16 @@
 # Slack Prompt Coach
 
-MVP de bot de Slack para mejorar prompts antes de usarlos en ChatGPT, Codex, Cursor, GitHub Copilot, Claude Code, Lovable, n8n u otra herramienta.
+MVP de bot de Slack para mejorar prompts de desarrollo de software antes de usarlos en ChatGPT, Codex, Cursor, GitHub Copilot, Claude Code u otra herramienta de desarrollo.
 
 ## Alcance del MVP
 
 - Recibe `/prompt` en Slack.
 - Abre un modal con preguntas básicas.
 - Envía el contexto a OpenAI.
-- Responde en Slack con un prompt mejorado, hasta 3 preguntas aclaratorias y un checklist breve.
+- Responde en Slack con un prompt mejorado, hasta 3 elementos de contexto por aclarar y un checklist breve.
 - Usa Slack Bolt con Socket Mode; no expone endpoint público.
 
-Fuera de alcance por ahora: GitHub API, Jira, base de datos, dashboard, audio, RAG, carga de archivos, revisión de código, portal web y automatizaciones n8n.
+Fuera de alcance por ahora: GitHub API, Jira, base de datos, dashboard, audio, RAG, carga de archivos, revisión de código, portal web, automatizaciones e integraciones fuera del flujo Slack → OpenAI.
 
 ## Requisitos
 

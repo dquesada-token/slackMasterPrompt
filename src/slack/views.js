@@ -1,4 +1,13 @@
-const { extractPromptSubmission, PROMPT_MODAL_CALLBACK_ID } = require('./modals');
+const {
+  buildExamplesGuideModal,
+  buildUseCasesGuideModal,
+  extractPromptSubmission,
+  PROMPT_EXAMPLES_ACTION_ID,
+  PROMPT_EXAMPLES_CALLBACK_ID,
+  PROMPT_GUIDE_ACTION_ID,
+  PROMPT_GUIDE_CALLBACK_ID,
+  PROMPT_MODAL_CALLBACK_ID,
+} = require('./modals');
 
 function parseMetadata(rawMetadata) {
   try {
@@ -22,6 +31,40 @@ async function postPrivateResponse({ client, channelId, userId, text }) {
 }
 
 function registerPromptView(app, { coach }) {
+  app.action(PROMPT_GUIDE_ACTION_ID, async ({ ack, body, client, logger }) => {
+    await ack();
+
+    try {
+      await client.views.push({
+        trigger_id: body.trigger_id,
+        view: buildUseCasesGuideModal(),
+      });
+    } catch (error) {
+      logger.error('Failed to open prompt coach use cases guide', { error: error.message });
+    }
+  });
+
+  app.action(PROMPT_EXAMPLES_ACTION_ID, async ({ ack, body, client, logger }) => {
+    await ack();
+
+    try {
+      await client.views.push({
+        trigger_id: body.trigger_id,
+        view: buildExamplesGuideModal(),
+      });
+    } catch (error) {
+      logger.error('Failed to open prompt coach examples guide', { error: error.message });
+    }
+  });
+
+  app.view(PROMPT_GUIDE_CALLBACK_ID, async ({ ack }) => {
+    await ack();
+  });
+
+  app.view(PROMPT_EXAMPLES_CALLBACK_ID, async ({ ack }) => {
+    await ack();
+  });
+
   app.view(PROMPT_MODAL_CALLBACK_ID, async ({ ack, body, view, client, logger }) => {
     await ack({ response_action: 'clear' });
 

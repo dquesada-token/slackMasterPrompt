@@ -1,19 +1,22 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const FALLBACK_NO_QUESTIONS = 'No detecté preguntas críticas pendientes. El prompt ya tiene suficiente contexto para una primera iteración.';
-const FORBIDDEN_CLAIM_PATTERNS = [
-  /revis[ée] (el )?(c[oó]digo|repositorio|repo|pull request|pr|archivo|archivos)/gi,
-  /analic[ée] (el )?(c[oó]digo|repositorio|repo|pull request|pr|archivo|archivos)/gi,
-  /acced[íi] (al|a los?) (repositorio|repo|archivos|pr|pull request)/gi,
-];
+const FALLBACK_NO_CONTEXT_GAPS = 'No detecté contexto crítico faltante. El prompt tiene suficiente información para una primera iteración.';
+const FALLBACK_STRATEGY = 'Prompt técnico estructurado con guardrails de alcance y calidad';
 
-function readSystemPrompt() {
-  return fs.readFileSync(path.join(__dirname, 'system-prompt.md'), 'utf8');
-}
+const FORBIDDEN_CLAIM_PATTERNS = [
+  /(?:ya\s+)?revis[ée]\s+(?:el|la|los|las)?\s*(c[oó]digo|repositorio|repo|pull request|pr|archivo|archivos)/gi,
+  /(?:ya\s+)?analic[ée]\s+(?:el|la|los|las)?\s*(c[oó]digo|repositorio|repo|pull request|pr|archivo|archivos)/gi,
+  /(?:ya\s+)?acced[íi]\s+(?:al|a los?|a las?)\s*(repositorio|repo|archivos|pr|pull request)/gi,
+  /(?:ya\s+)?ejecut[ée]\s+(?:el|la)?\s*(c[oó]digo|comando|script|test|tests)/gi,
+];
 
 function normalizeText(value) {
   return String(value || '').trim();
+}
+
+function readSystemPrompt() {
+  return fs.readFileSync(path.join(__dirname, 'system-prompt.md'), 'utf8');
 }
 
 function limitList(values, maxItems) {
@@ -37,6 +40,7 @@ function parseCoachOutput(rawText) {
     improvedPrompt: removeForbiddenClaims(rawText),
     questions: [],
     checklist: ['Validá que el objetivo esté claro', 'Confirmá restricciones importantes', 'Revisá que no incluya secretos'],
+    strategy: FALLBACK_STRATEGY,
   };
 
   try {
@@ -45,6 +49,7 @@ function parseCoachOutput(rawText) {
       improvedPrompt: removeForbiddenClaims(parsed.improvedPrompt || parsed.prompt || fallback.improvedPrompt),
       questions: limitList(parsed.questions, 3),
       checklist: limitList(parsed.checklist, 3),
+      strategy: normalizeText(parsed.strategy) || FALLBACK_STRATEGY,
     };
   } catch (_error) {
     return fallback;
@@ -61,13 +66,20 @@ function buildCoachInput(form) {
   ].join('\n');
 }
 
-function formatCoachResponse({ tool, improvedPrompt, questions = [], checklist = [] }) {
+function formatCoachResponse({
+  tool,
+  improvedPrompt,
+  questions = [],
+  checklist = [],
+  strategy,
+}) {
   const safePrompt = removeForbiddenClaims(improvedPrompt);
+  const visibleStrategy = normalizeText(strategy) || FALLBACK_STRATEGY;
   const visibleQuestions = limitList(questions, 3);
   const visibleChecklist = limitList(checklist, 3);
   const questionText = visibleQuestions.length > 0
     ? visibleQuestions.map((question, index) => `${index + 1}. ${question}`).join('\n')
-    : FALLBACK_NO_QUESTIONS;
+    : FALLBACK_NO_CONTEXT_GAPS;
   const checklistText = visibleChecklist.length > 0
     ? visibleChecklist.map((item) => `* ${item}`).join('\n')
     : '* Validá que el prompt tenga objetivo, contexto y restricciones';
@@ -76,6 +88,7 @@ function formatCoachResponse({ tool, improvedPrompt, questions = [], checklist =
     'Hola, te preparé una versión mejorada del prompt.',
     '',
     `*Herramienta destino:* ${normalizeText(tool) || 'No especificada'}`,
+    `*Estrategia aplicada:* ${visibleStrategy}`,
     '',
     '*Prompt mejorado:*',
     '',
@@ -83,7 +96,7 @@ function formatCoachResponse({ tool, improvedPrompt, questions = [], checklist =
     safePrompt || 'Necesito más contexto para generar un prompt útil.',
     '```',
     '',
-    '*Preguntas pendientes:*',
+    '*Contexto que conviene aclarar antes de usarlo:*',
     '',
     questionText,
     '',
@@ -93,7 +106,7 @@ function formatCoachResponse({ tool, improvedPrompt, questions = [], checklist =
   ].join('\n');
 }
 
-function createPromptCoach({ generateText, systemPrompt = readSystemPrompt() }) {
+function createPromptCoach({ generateText, systemPrompt } = {}) {
   if (typeof generateText !== 'function') {
     throw new Error('createPromptCoach requires a generateText function');
   }
@@ -101,18 +114,24 @@ function createPromptCoach({ generateText, systemPrompt = readSystemPrompt() }) 
   return {
     async improve(form) {
       const input = buildCoachInput(form);
-      const rawOutput = await generateText({ instructions: systemPrompt, input });
+      const instructions = systemPrompt || readSystemPrompt();
+      const rawOutput = await generateText({ instructions, input });
       const parsed = parseCoachOutput(rawOutput);
-      return formatCoachResponse({ tool: form.tool, ...parsed });
+      return formatCoachResponse({
+        tool: form.tool,
+        ...parsed,
+      });
     },
   };
 }
 
 module.exports = {
-  FALLBACK_NO_QUESTIONS,
+  FALLBACK_STRATEGY,
+  FALLBACK_NO_CONTEXT_GAPS,
   buildCoachInput,
   createPromptCoach,
   formatCoachResponse,
   parseCoachOutput,
+  readSystemPrompt,
   removeForbiddenClaims,
 };

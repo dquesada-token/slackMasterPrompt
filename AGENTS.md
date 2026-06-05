@@ -4,7 +4,7 @@
 
 Este proyecto es un MVP de un bot de Slack llamado **Slack Prompt Coach**.
 
-Su función es ayudar a personas desarrolladoras a mejorar prompts antes de usarlos en herramientas como ChatGPT, Codex, Cursor, Copilot, Claude Code, Lovable o n8n.
+Su función es ayudar a personas desarrolladoras a mejorar prompts de desarrollo de software antes de usarlos en herramientas como ChatGPT, Codex, Cursor, Copilot, Claude Code u otra herramienta de desarrollo.
 
 El bot **no revisa código**, **no accede a repositorios**, **no analiza PRs** y **no ejecuta cambios**.
 
@@ -32,7 +32,7 @@ No implementar todavía:
 * carga de archivos
 * revisión de código
 * portal web
-* n8n
+* automatizaciones externas
 
 ---
 
@@ -95,8 +95,6 @@ El modal debe pedir:
    * Cursor
    * GitHub Copilot
    * Claude Code
-   * Lovable
-   * n8n
    * Otra
 3. **¿Qué tecnología o contexto aplica?**
 4. **¿Qué salida esperás?**
@@ -110,7 +108,7 @@ El bot debe generar una respuesta con:
 
 1. Herramienta destino.
 2. Prompt mejorado.
-3. Máximo 3 preguntas aclaratorias.
+3. Máximo 3 elementos de contexto que conviene aclarar antes de usar el prompt.
 4. Checklist breve antes de usar el prompt.
 
 El bot nunca debe decir que revisó código, archivos, repositorios o PRs.
@@ -132,11 +130,11 @@ Hola, te preparé una versión mejorada del prompt.
 [prompt generado]
 ````
 
-*Preguntas pendientes:*
+*Contexto que conviene aclarar antes de usarlo:*
 
-1. [pregunta 1]
-2. [pregunta 2]
-3. [pregunta 3]
+1. [contexto faltante 1]
+2. [contexto faltante 2]
+3. [contexto faltante 3]
 
 *Checklist antes de usarlo:*
 
@@ -146,10 +144,10 @@ Hola, te preparé una versión mejorada del prompt.
 
 ````
 
-Si no hay preguntas pendientes, escribir:
+Si no hay contexto crítico faltante, escribir:
 
 ```text
-No detecté preguntas críticas pendientes. El prompt ya tiene suficiente contexto para una primera iteración.
+No detecté contexto crítico faltante. El prompt tiene suficiente información para una primera iteración.
 ````
 
 ---
@@ -329,7 +327,7 @@ El MVP está listo cuando:
 4. El usuario puede enviar el formulario.
 5. El bot llama a OpenAI.
 6. El bot devuelve un prompt mejorado.
-7. La respuesta incluye preguntas y checklist.
+7. La respuesta incluye contexto por aclarar y checklist.
 8. El bot corre con PM2 en Hostinger.
 9. El código puede subirse a GitHub sin secretos.
 10. El código puede bajarse desde Hostinger con `git clone`.

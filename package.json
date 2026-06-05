@@ -1,0 +1,19 @@
+{
+  "name": "slack-prompt-coach",
+  "version": "0.1.0",
+  "description": "MVP Slack bot that improves AI prompts from a /prompt command.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test",
+    "check": "npm test && node --check src/index.js && node --check src/slack/commands.js && node --check src/slack/views.js && node --check src/slack/modals.js && node --check src/prompt/promptCoach.js && node --check src/llm/openaiClient.js && node --check src/utils/env.js && node --check src/utils/logger.js && node --check ecosystem.config.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@slack/bolt": "latest",
+    "dotenv": "latest",
+    "openai": "latest"
+  }
+}

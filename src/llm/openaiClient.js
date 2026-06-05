@@ -14,8 +14,9 @@ function promptCoachResponseSchema() {
         maxItems: 3,
         items: { type: 'string' },
       },
+      strategy: { type: 'string' },
     },
-    required: ['improvedPrompt', 'questions', 'checklist'],
+    required: ['improvedPrompt', 'questions', 'checklist', 'strategy'],
   };
 }
 

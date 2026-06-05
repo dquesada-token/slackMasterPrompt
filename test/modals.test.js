@@ -53,45 +53,44 @@ test('buildPromptModal starts with separate guide and examples buttons', () => {
   );
 });
 
-test('buildPromptModal groups fields with section headers for a less cramped layout', () => {
+test('buildPromptModal keeps a compact tool plus raw prompt layout', () => {
   const modal = buildPromptModal({ channelId: 'C123', userId: 'U123' });
   const text = allTexts(modal).join('\n');
 
-  assert.match(text, /Resultado/);
-  assert.match(text, /Contexto/);
-  assert.match(text, /Límites/);
-  assert.equal(modal.blocks.filter((block) => block.type === 'divider').length >= 3, true);
+  assert.match(text, /prompt o idea inicial/i);
+  assert.match(text, /Ver casos de uso/);
+  assert.match(text, /Ver ejemplos/);
+  assert.equal(inputBlocks(modal).length, 2);
 });
 
-test('buildPromptModal keeps practical developer fields in intention-first order', () => {
+test('buildPromptModal keeps only tool and raw prompt fields', () => {
   const modal = buildPromptModal({ channelId: 'C123', userId: 'U123' });
   const labels = inputBlocks(modal).map((block) => block.label.text);
 
   assert.equal(modal.type, 'modal');
   assert.equal(modal.callback_id, PROMPT_MODAL_CALLBACK_ID);
   assert.deepEqual(labels, [
-    'Qué querés lograr',
-    'Qué querés recibir',
     'Qué herramienta vas a usar',
-    'Tecnología o contexto',
-    'Qué NO debe hacer la IA',
+    'Pegá tu prompt o idea inicial',
   ]);
   assert.equal(JSON.parse(modal.private_metadata).channelId, 'C123');
 });
 
-test('buildPromptModal uses realistic field placeholders and keeps the same five inputs', () => {
+test('buildPromptModal uses a realistic raw prompt placeholder and removes structured fields', () => {
   const modal = buildPromptModal({ channelId: 'C123', userId: 'U123' });
   const placeholders = Object.fromEntries(
     inputBlocks(modal).map((block) => [block.block_id, block.element.placeholder?.text])
   );
 
-  assert.equal(placeholders.goal_block, 'Ej: Agregar validación de payload en POST /payments sin cambiar la respuesta actual');
-  assert.equal(placeholders.output_block, 'Ej: Prompt para pedir implementación incremental con tests y criterios de aceptación');
   assert.equal(placeholders.tool_block, 'Seleccioná una herramienta');
-  assert.equal(placeholders.context_block, 'Ej: Node.js 20, Express, endpoint POST /payments, usa node:test');
-  assert.equal(placeholders.constraints_block, 'Ej: No cambiar contratos existentes, no tocar DB, no asumir archivos no compartidos');
-  assert.equal(Object.hasOwn(placeholders, 'mode_block'), false);
-  assert.equal(inputBlocks(modal).length, 5);
+  assert.equal(
+    placeholders.raw_prompt_block,
+    'Ej: Quiero pedirle a Codex que agregue validación al endpoint POST /payments en Node.js, sin cambiar el contrato actual, y que incluya tests con node:test.'
+  );
+  for (const removedBlockId of ['goal_block', 'output_block', 'context_block', 'constraints_block', 'mode_block']) {
+    assert.equal(Object.hasOwn(placeholders, removedBlockId), false);
+  }
+  assert.equal(inputBlocks(modal).length, 2);
 });
 
 test('buildPromptModal removes emojis and obsolete mode choices from the user-facing modal copy', () => {
@@ -103,6 +102,14 @@ test('buildPromptModal removes emojis and obsolete mode choices from the user-fa
   assert.doesNotMatch(text, /Rápido — dame un prompt ya/);
   assert.doesNotMatch(text, /Coach — prompt \+ preguntas inteligentes/);
   assert.doesNotMatch(text, /Estricto — primero aclara huecos importantes/);
+  for (const removedLabel of [
+    'Qué querés lograr',
+    'Qué querés recibir',
+    'Tecnología o contexto',
+    'Qué NO debe hacer la IA',
+  ]) {
+    assert.doesNotMatch(text, new RegExp(removedLabel, 'i'));
+  }
 });
 
 test('buildUseCasesGuideModal creates a secondary modal that submits back to the main form', () => {
@@ -114,35 +121,37 @@ test('buildUseCasesGuideModal creates a secondary modal that submits back to the
   assert.equal(Object.hasOwn(modal, 'close'), false);
 });
 
-test('buildUseCasesGuideModal explains Master Prompt oriented use cases with practical guidance', () => {
+test('buildUseCasesGuideModal explains what raw prompts developers can paste', () => {
   const modal = buildUseCasesGuideModal();
   const text = allTexts(modal).join('\n');
 
-  for (const expected of ['Cuándo usarlo', 'Qué completar', 'Evitá']) {
+  for (const expected of ['Cuándo usarlo', 'Qué podés pegar', 'Evitá']) {
     assert.match(text, new RegExp(expected, 'i'));
   }
 
   for (const useCase of [
-    'Convertir una idea vaga en un prompt accionable',
-    'Preparar un prompt para una herramienta concreta',
-    'Evitar que la IA invente contexto',
-    'Definir límites antes de pedir cambios',
-    'Mejorar un prompt que ya escribiste',
+    'Tengo una idea incompleta',
+    'Tengo un prompt malo que quiero mejorar',
+    'Adaptar un pedido a una herramienta concreta',
+    'Poner límites de alcance',
+    'Pedir tests, refactor o debugging',
   ]) {
     assert.match(text, new RegExp(useCase, 'i'));
   }
 
-  for (const oldTaskCentricTitle of [
-    'Crear o mejorar tests',
-    'Debuggear un problema',
-    'Refactor seguro',
-    'Documentar o explicar código',
+  for (const oldFormCopy of [
+    'Qué completar',
+    'objetivo, herramienta destino, contexto técnico mínimo, salida esperada',
+    'Qué querés lograr',
+    'Qué querés recibir',
+    'Tecnología o contexto',
+    'Qué NO debe hacer la IA',
   ]) {
-    assert.equal(text.includes(`*${oldTaskCentricTitle}*`), false);
+    assert.doesNotMatch(text, new RegExp(oldFormCopy, 'i'));
   }
 });
 
-test('buildExamplesGuideModal shows three complete Node.js form examples', () => {
+test('buildExamplesGuideModal shows three raw prompt examples for Node.js developers', () => {
   const modal = buildExamplesGuideModal();
   const text = allTexts(modal).join('\n');
 
@@ -156,13 +165,19 @@ test('buildExamplesGuideModal shows three complete Node.js form examples', () =>
   }
 
   for (const field of [
+    'Herramienta destino',
+    'Prompt o idea inicial',
+  ]) {
+    assert.equal((text.match(new RegExp(field, 'g')) || []).length, 3);
+  }
+
+  for (const removedField of [
     'Qué querés lograr',
     'Qué querés recibir',
-    'Qué herramienta vas a usar',
     'Tecnología o contexto',
     'Qué NO debe hacer la IA',
   ]) {
-    assert.equal((text.match(new RegExp(field, 'g')) || []).length, 3);
+    assert.doesNotMatch(text, new RegExp(removedField, 'i'));
   }
 
   assert.doesNotMatch(text, /Cómo querés que trabaje el coach/);
@@ -189,7 +204,7 @@ test('buildExamplesGuideModal gives rich developer-grade examples, not short pla
     assert.match(text, new RegExp(expected, 'i'));
   }
 
-  assert.equal(text.length > 3200, true);
+  assert.equal(text.length > 1500, true);
 });
 
 test('buildPromptModal only offers developer-focused tools', () => {
@@ -205,43 +220,42 @@ test('buildPromptModal only offers developer-focused tools', () => {
   assert.equal(TOOL_OPTIONS.includes('n8n'), false);
 });
 
-test('extractPromptSubmission returns normalized form values from Slack view state without mode', () => {
+test('extractPromptSubmission returns selected tool and raw prompt from Slack view state', () => {
   const form = extractPromptSubmission({
     state: {
       values: {
-        goal_block: { goal_input: { value: '  Mejorar prompts  ' } },
         tool_block: { tool_select: { selected_option: { value: 'Codex' } } },
-        context_block: { context_input: { value: ' Node.js ' } },
-        output_block: { output_input: { value: ' Prompt final ' } },
-        constraints_block: { constraints_input: { value: ' No revisar repos ' } },
+        raw_prompt_block: {
+          raw_prompt_input: {
+            value: '  Quiero que Codex agregue validación en POST /payments con tests  ',
+          },
+        },
       },
     },
   });
 
   assert.deepEqual(form, {
-    goal: 'Mejorar prompts',
     tool: 'Codex',
-    context: 'Node.js',
-    expectedOutput: 'Prompt final',
-    constraints: 'No revisar repos',
+    rawPrompt: 'Quiero que Codex agregue validación en POST /payments con tests',
   });
 });
 
-test('extractPromptSubmission ignores obsolete mode values if Slack sends stale modal state', () => {
+test('extractPromptSubmission ignores obsolete structured field values if Slack sends stale modal state', () => {
   const form = extractPromptSubmission({
     state: {
       values: {
         mode_block: { mode_select: { selected_option: { value: 'strict' } } },
+        goal_block: { goal_input: { value: 'Mejorar prompts' } },
+        context_block: { context_input: { value: 'Node.js' } },
+        output_block: { output_input: { value: 'Prompt final' } },
+        constraints_block: { constraints_input: { value: 'No revisar repos' } },
       },
     },
   });
 
   assert.deepEqual(form, {
-    goal: '',
     tool: '',
-    context: '',
-    expectedOutput: '',
-    constraints: '',
+    rawPrompt: '',
   });
 });
 

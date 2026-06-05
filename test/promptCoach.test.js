@@ -10,11 +10,8 @@ const {
 } = require('../src/prompt/promptCoach');
 
 const sampleForm = {
-  goal: 'Crear pruebas unitarias para un servicio de pagos',
   tool: 'Codex',
-  context: 'Node.js con node:test',
-  expectedOutput: 'Plan y tests concretos',
-  constraints: 'No tocar producción sin pruebas',
+  rawPrompt: 'Quiero crear pruebas unitarias para un servicio de pagos en Node.js con node:test. No tocar producción sin pruebas.',
 };
 
 test('formatCoachResponse uses the required Slack markdown sections', () => {
@@ -87,8 +84,12 @@ test('createPromptCoach calls the generator and formats the generated result', a
   assert.equal(calls.length, 1);
   assert.doesNotMatch(calls[0].input, /Modo de comportamiento/);
   assert.doesNotMatch(calls[0].input, /Calidad esperada: alta en todos los modos/);
-  assert.match(calls[0].input, /Crear pruebas unitarias/);
   assert.match(calls[0].input, /Herramienta destino: Codex/);
+  assert.match(calls[0].input, /Prompt o idea inicial del usuario: Quiero crear pruebas unitarias/);
+  assert.doesNotMatch(calls[0].input, /Objetivo:/);
+  assert.doesNotMatch(calls[0].input, /Tecnología o contexto:/);
+  assert.doesNotMatch(calls[0].input, /Salida esperada:/);
+  assert.doesNotMatch(calls[0].input, /Restricciones/);
   assert.match(calls[0].instructions, /Slack Prompt Coach/i);
   assert.match(response, /Escribe un prompt claro/);
   assert.doesNotMatch(response, /\*Modo:\*/);
@@ -103,6 +104,8 @@ test('readSystemPrompt loads one complete stateless development prompt', () => {
     'Slack Prompt Coach',
     'bot stateless',
     'desarrollo de software',
+    'rawPrompt',
+    'entrada imperfecta',
     'No digás ni sugirás que revisaste código',
     'No asumas acceso a repositorios',
     'No digás que ejecutaste código',
@@ -174,19 +177,25 @@ test('createPromptCoach sends the single stateless system prompt to the generato
 });
 
 test('buildCoachInput ignores obsolete clarificationMode values', () => {
-  const input = buildCoachInput({ ...sampleForm, clarificationMode: 'strict' });
+  const input = buildCoachInput({
+    ...sampleForm,
+    clarificationMode: 'strict',
+    goal: 'Valor obsoleto',
+    context: 'Valor obsoleto',
+    expectedOutput: 'Valor obsoleto',
+    constraints: 'Valor obsoleto',
+  });
 
   for (const expected of [
-    'Objetivo: Crear pruebas unitarias',
     'Herramienta destino: Codex',
-    'Tecnología o contexto: Node.js con node:test',
-    'Salida esperada: Plan y tests concretos',
-    'Restricciones / qué NO debe hacer la IA: No tocar producción sin pruebas',
+    'Prompt o idea inicial del usuario: Quiero crear pruebas unitarias',
   ]) {
     assert.match(input, new RegExp(expected, 'i'));
   }
 
   assert.doesNotMatch(input, /Modo de comportamiento|strict|coach|fast/i);
+  assert.doesNotMatch(input, /Objetivo:|Tecnología o contexto:|Salida esperada:|Restricciones/i);
+  assert.doesNotMatch(input, /Valor obsoleto/);
 });
 
 test('parseCoachOutput removes broad claims about reviewing files, repos, code, PRs or execution', () => {

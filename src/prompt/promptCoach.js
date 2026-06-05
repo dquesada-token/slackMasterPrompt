@@ -58,11 +58,8 @@ function parseCoachOutput(rawText) {
 
 function buildCoachInput(form) {
   return [
-    `Objetivo: ${normalizeText(form.goal)}`,
     `Herramienta destino: ${normalizeText(form.tool)}`,
-    `Tecnología o contexto: ${normalizeText(form.context)}`,
-    `Salida esperada: ${normalizeText(form.expectedOutput)}`,
-    `Restricciones / qué NO debe hacer la IA: ${normalizeText(form.constraints)}`,
+    `Prompt o idea inicial del usuario: ${normalizeText(form.rawPrompt)}`,
   ].join('\n');
 }
 

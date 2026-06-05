@@ -87,8 +87,7 @@ Mantener el proyecto simple. No usar TypeScript en el MVP.
 
 El modal debe pedir:
 
-1. **¿Qué querés lograr con la IA?**
-2. **¿Qué herramienta vas a usar?**
+1. **¿Qué herramienta vas a usar?**
 
    * ChatGPT
    * Codex
@@ -96,9 +95,7 @@ El modal debe pedir:
    * GitHub Copilot
    * Claude Code
    * Otra
-3. **¿Qué tecnología o contexto aplica?**
-4. **¿Qué salida esperás?**
-5. **¿Qué NO debe hacer la IA?**
+2. **Pegá tu prompt o idea inicial**
 
 ---
 

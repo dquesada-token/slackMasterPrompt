@@ -5,7 +5,7 @@ MVP de bot de Slack para mejorar prompts de desarrollo de software antes de usar
 ## Alcance del MVP
 
 - Recibe `/prompt` en Slack.
-- Abre un modal con preguntas básicas.
+- Abre un modal simple para elegir herramienta y pegar un prompt o idea inicial.
 - Envía el contexto a OpenAI.
 - Responde en Slack con un prompt mejorado, hasta 3 elementos de contexto por aclarar y un checklist breve.
 - Usa Slack Bolt con Socket Mode; no expone endpoint público.

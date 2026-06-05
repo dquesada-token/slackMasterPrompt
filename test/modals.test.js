@@ -35,6 +35,21 @@ function allTexts(value) {
   return texts;
 }
 
+test('buildPromptModal keeps Slack placeholder text within platform limits', () => {
+  const modal = buildPromptModal({ channelId: 'C123', userId: 'U123' });
+
+  for (const block of inputBlocks(modal)) {
+    const placeholder = block.element.placeholder?.text;
+    if (placeholder) {
+      assert.equal(
+        placeholder.length <= 150,
+        true,
+        `${block.block_id} placeholder should be at most 150 characters`
+      );
+    }
+  }
+});
+
 test('buildPromptModal starts with separate guide and examples buttons', () => {
   const modal = buildPromptModal({ channelId: 'C123', userId: 'U123' });
   const actionsBlock = modal.blocks[1];
@@ -85,7 +100,7 @@ test('buildPromptModal uses a realistic raw prompt placeholder and removes struc
   assert.equal(placeholders.tool_block, 'Seleccioná una herramienta');
   assert.equal(
     placeholders.raw_prompt_block,
-    'Ej: Quiero pedirle a Codex que agregue validación al endpoint POST /payments en Node.js, sin cambiar el contrato actual, y que incluya tests con node:test.'
+    'Ej: Pedile a Codex validar POST /payments en Node.js sin cambiar el contrato actual e incluir tests con node:test.'
   );
   for (const removedBlockId of ['goal_block', 'output_block', 'context_block', 'constraints_block', 'mode_block']) {
     assert.equal(Object.hasOwn(placeholders, removedBlockId), false);

@@ -122,7 +122,7 @@ function buildPromptModal(metadata = {}) {
         blockId: BLOCK_IDS.rawPrompt,
         actionId: ACTION_IDS.rawPrompt,
         label: 'Pegá tu prompt o idea inicial',
-        placeholder: 'Ej: Quiero pedirle a Codex que agregue validación al endpoint POST /payments en Node.js, sin cambiar el contrato actual, y que incluya tests con node:test.',
+        placeholder: 'Ej: Pedile a Codex validar POST /payments en Node.js sin cambiar el contrato actual e incluir tests con node:test.',
       }),
     ],
   };

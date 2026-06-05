@@ -36,7 +36,8 @@ SLACK_BOT_TOKEN=xoxb-your-token
 SLACK_APP_TOKEN=xapp-your-token
 SLACK_SIGNING_SECRET=your-signing-secret
 OPENAI_API_KEY=your-openai-api-key
-OPENAI_MODEL=gpt-5.4-mini
+OPENAI_MODEL=gpt-5.5
+OPENAI_REASONING_EFFORT=medium
 NODE_ENV=development
 LOG_LEVEL=info
 ```

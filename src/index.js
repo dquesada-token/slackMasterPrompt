@@ -14,6 +14,7 @@ async function buildApp() {
   const generateText = await createOpenAITextGenerator({
     apiKey: env.OPENAI_API_KEY,
     model: env.OPENAI_MODEL,
+    reasoningEffort: env.OPENAI_REASONING_EFFORT,
   });
   const coach = createPromptCoach({ generateText });
 
@@ -36,6 +37,7 @@ async function start() {
   logger.info('Slack Prompt Coach started in Socket Mode', {
     nodeEnv: env.NODE_ENV,
     model: env.OPENAI_MODEL,
+    reasoningEffort: env.OPENAI_REASONING_EFFORT,
   });
 }
 

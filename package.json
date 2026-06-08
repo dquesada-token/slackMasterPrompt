@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "test": "node --test",
-    "check": "npm test && node --check src/index.js && node --check src/slack/commands.js && node --check src/slack/views.js && node --check src/slack/modals.js && node --check src/prompt/promptCoach.js && node --check src/llm/openaiClient.js && node --check src/utils/env.js && node --check src/utils/logger.js && node --check ecosystem.config.js"
+    "check": "npm test && node --check src/index.js && node --check src/slack/commands.js && node --check src/slack/views.js && node --check src/slack/modals.js && node --check src/slack/responseBlocks.js && node --check src/slack/promptContextCache.js && node --check src/slack/shortcuts.js && node --check src/prompt/promptCoach.js && node --check src/llm/openaiClient.js && node --check src/utils/env.js && node --check src/utils/logger.js && node --check ecosystem.config.js"
   },
   "engines": {
     "node": ">=20"

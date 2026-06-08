@@ -22,12 +22,18 @@ test('formatCoachResponse uses the required Slack markdown sections', () => {
     questions: ['¿Qué módulo exacto?', '¿Qué casos borde importan?', '¿Hay mocks prohibidos?', '¿Pregunta extra?'],
     checklist: ['Confirma alcance', 'Ejecuta tests', 'Revisa secretos', 'Extra'],
     strategy: 'Scope lock + criterios de aceptación + stop conditions',
+    qualityScore: 74,
+    detectedIssues: ['Falta criterio de aceptación'],
+    recommendedActions: ['refine_add_acceptance_criteria'],
   });
 
   assert.match(text, /^Hola, te preparé una versión mejorada del prompt\./);
   assert.match(text, /\*Herramienta destino:\* Codex/);
   assert.doesNotMatch(text, /\*Modo:\*/);
   assert.match(text, /\*Estrategia aplicada:\* Scope lock \+ criterios de aceptación \+ stop conditions/);
+  assert.doesNotMatch(text, /Calidad del prompt original/i);
+  assert.doesNotMatch(text, /74\/100/);
+  assert.match(text, /Falta criterio de aceptación/);
   assert.match(text, /\*Prompt mejorado:\*\n\n```text\nActúa como revisor técnico/);
   assert.match(text, /\*Contexto que conviene aclarar antes de usarlo:\*/);
   assert.match(text, /1\. ¿Qué módulo exacto\?/);
@@ -58,11 +64,17 @@ test('parseCoachOutput accepts JSON and removes forbidden repo-review claims', (
     questions: ['¿Cuál es el alcance?'],
     checklist: ['No pegues secretos'],
     strategy: 'Tool routing + token efficiency audit',
+    qualityScore: 61,
+    detectedIssues: ['Falta alcance'],
+    recommendedActions: ['refine_add_constraints'],
   }));
 
   assert.equal(parsed.improvedPrompt.includes('Revisé el repositorio'), false);
   assert.match(parsed.improvedPrompt, /No asumas acceso a código/);
   assert.equal(parsed.strategy, 'Tool routing + token efficiency audit');
+  assert.equal(parsed.qualityScore, 61);
+  assert.deepEqual(parsed.detectedIssues, ['Falta alcance']);
+  assert.deepEqual(parsed.recommendedActions, ['refine_add_constraints']);
 });
 
 test('createPromptCoach calls the generator and formats the generated result', async () => {
@@ -75,6 +87,9 @@ test('createPromptCoach calls the generator and formats the generated result', a
         questions: ['¿Cuál es el criterio de éxito?'],
         checklist: ['Incluye ejemplos', 'Aclara restricciones'],
         strategy: 'Codex routing + criterios de aceptación',
+        qualityScore: 80,
+        detectedIssues: [],
+        recommendedActions: [],
       });
     },
   });
@@ -106,11 +121,14 @@ test('readSystemPrompt loads one complete stateless development prompt', () => {
     'desarrollo de software',
     'rawPrompt',
     'entrada imperfecta',
-    'No digás ni sugirás que revisaste código',
+    'revisaste código',
     'No asumas acceso a repositorios',
-    'No digás que ejecutaste código',
+    'ejecutaste comandos',
     'No incluyás secretos',
-    'No propongás GitHub API',
+    'GitHub API',
+    'qualityScore',
+    'detectedIssues',
+    'recommendedActions',
     '"improvedPrompt"',
     '"questions"',
     '"checklist"',
@@ -134,6 +152,7 @@ test('system prompt adapts Prompt Master ideas without broad non-MVP claims', ()
     'stop conditions',
     'auditar eficiencia',
     'contexto que conviene aclarar',
+    'rúbrica',
   ]) {
     assert.match(prompt, new RegExp(expected, 'i'), `system prompt should include ${expected}`);
   }
@@ -164,6 +183,9 @@ test('createPromptCoach sends the single stateless system prompt to the generato
         questions: [],
         checklist: [],
         strategy: 'Single stateless routing',
+        qualityScore: 90,
+        detectedIssues: [],
+        recommendedActions: [],
       });
     },
   });
@@ -209,4 +231,42 @@ test('parseCoachOutput removes broad claims about reviewing files, repos, code, 
   assert.doesNotMatch(parsed.improvedPrompt, /ejecut[ée] el c[oó]digo/i);
   assert.doesNotMatch(parsed.improvedPrompt, /analic[ée] el PR/i);
   assert.match(parsed.improvedPrompt, /No asumas acceso a c[oó]digo, repositorios, archivos o PRs/i);
+});
+
+
+test('createPromptCoach supports stateless refinement and variants without storing prompts', async () => {
+  const calls = [];
+  const coach = createPromptCoach({
+    systemPrompt: 'Sistema test',
+    generateText: async (request) => {
+      calls.push(request);
+      return JSON.stringify({
+        improvedPrompt: 'Prompt transformado.',
+        questions: [],
+        checklist: [],
+        strategy: 'Transformación stateless',
+        qualityScore: 77,
+        detectedIssues: [],
+        recommendedActions: [],
+      });
+    },
+  });
+
+  const refined = await coach.refine({
+    tool: 'Codex',
+    currentPrompt: 'Prompt actual',
+    refinement: 'Hacelo más corto',
+  });
+  const variant = await coach.variant({
+    tool: 'ChatGPT',
+    currentPrompt: 'Prompt actual',
+    variant: 'variant_agentic',
+  });
+
+  assert.equal(calls.length, 2);
+  assert.match(calls[0].input, /Pedido de refinamiento: Hacelo más corto/);
+  assert.match(calls[1].input, /Pedido de variante: variant_agentic/);
+  assert.equal(refined.tool, 'Codex');
+  assert.equal(variant.tool, 'ChatGPT');
+  assert.equal(refined.improvedPrompt, 'Prompt transformado.');
 });

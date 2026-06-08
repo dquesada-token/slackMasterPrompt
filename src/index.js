@@ -4,6 +4,7 @@ const { App } = require('@slack/bolt');
 const { createOpenAITextGenerator } = require('./llm/openaiClient');
 const { createPromptCoach } = require('./prompt/promptCoach');
 const { registerPromptCommand } = require('./slack/commands');
+const { registerPromptShortcut } = require('./slack/shortcuts');
 const { registerPromptView } = require('./slack/views');
 const { loadEnv } = require('./utils/env');
 const { createLogger } = require('./utils/logger');
@@ -26,6 +27,7 @@ async function buildApp() {
   });
 
   registerPromptCommand(app);
+  registerPromptShortcut(app);
   registerPromptView(app, { coach });
 
   return { app, logger, env };

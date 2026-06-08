@@ -39,17 +39,23 @@ function option(text, value) {
   return { text: plainText(text), value };
 }
 
-function inputBlock({ blockId, actionId, label, placeholder, multiline = true }) {
+function inputBlock({ blockId, actionId, label, placeholder, multiline = true, initialValue = '' }) {
+  const element = {
+    type: 'plain_text_input',
+    action_id: actionId,
+    placeholder: placeholder ? plainText(placeholder) : undefined,
+    multiline,
+  };
+
+  if (initialValue) {
+    element.initial_value = initialValue;
+  }
+
   return {
     type: 'input',
     block_id: blockId,
     label: plainText(label),
-    element: {
-      type: 'plain_text_input',
-      action_id: actionId,
-      placeholder: placeholder ? plainText(placeholder) : undefined,
-      multiline,
-    },
+    element,
   };
 }
 
@@ -94,7 +100,16 @@ function helpSectionBlocks() {
   ];
 }
 
+const MAX_RAW_PROMPT_INITIAL_VALUE_LENGTH = 3000;
+
+function truncateInitialValue(value) {
+  return clean(value).slice(0, MAX_RAW_PROMPT_INITIAL_VALUE_LENGTH);
+}
+
 function buildPromptModal(metadata = {}) {
+  const initialRawPrompt = truncateInitialValue(metadata.initialRawPrompt);
+  const showHelp = metadata.showHelp !== false;
+
   return {
     type: 'modal',
     callback_id: PROMPT_MODAL_CALLBACK_ID,
@@ -106,7 +121,7 @@ function buildPromptModal(metadata = {}) {
       userId: metadata.userId || '',
     }),
     blocks: [
-      ...helpSectionBlocks(),
+      ...(showHelp ? helpSectionBlocks() : []),
       {
         type: 'input',
         block_id: BLOCK_IDS.tool,
@@ -123,6 +138,7 @@ function buildPromptModal(metadata = {}) {
         actionId: ACTION_IDS.rawPrompt,
         label: 'Pegá tu prompt o idea inicial',
         placeholder: 'Ej: Pedile a Codex validar POST /payments en Node.js sin cambiar el contrato actual e incluir tests con node:test.',
+        initialValue: initialRawPrompt,
       }),
     ],
   };

@@ -15,8 +15,27 @@ function promptCoachResponseSchema() {
         items: { type: 'string' },
       },
       strategy: { type: 'string' },
+      qualityScore: { type: 'number' },
+      detectedIssues: {
+        type: 'array',
+        maxItems: 3,
+        items: { type: 'string' },
+      },
+      recommendedActions: {
+        type: 'array',
+        maxItems: 3,
+        items: { type: 'string' },
+      },
     },
-    required: ['improvedPrompt', 'questions', 'checklist', 'strategy'],
+    required: [
+      'improvedPrompt',
+      'questions',
+      'checklist',
+      'strategy',
+      'qualityScore',
+      'detectedIssues',
+      'recommendedActions',
+    ],
   };
 }
 

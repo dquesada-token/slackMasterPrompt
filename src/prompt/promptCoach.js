@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const FALLBACK_NO_CONTEXT_GAPS = 'No detecté contexto crítico faltante. El prompt tiene suficiente información para una primera iteración.';
 const FALLBACK_STRATEGY = 'Prompt técnico estructurado con guardrails de alcance y calidad';
+const FALLBACK_QUALITY_SCORE = 70;
 
 const FORBIDDEN_CLAIM_PATTERNS = [
   /(?:ya\s+)?revis[ée]\s+(?:el|la|los|las)?\s*(c[oó]digo|repositorio|repo|pull request|pr|archivo|archivos)/gi,
@@ -27,6 +28,12 @@ function limitList(values, maxItems) {
     .slice(0, maxItems);
 }
 
+function normalizeScore(value) {
+  const score = Number(value);
+  if (!Number.isFinite(score)) return FALLBACK_QUALITY_SCORE;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
 function removeForbiddenClaims(text) {
   let safeText = normalizeText(text);
   for (const pattern of FORBIDDEN_CLAIM_PATTERNS) {
@@ -41,6 +48,9 @@ function parseCoachOutput(rawText) {
     questions: [],
     checklist: ['Validá que el objetivo esté claro', 'Confirmá restricciones importantes', 'Revisá que no incluya secretos'],
     strategy: FALLBACK_STRATEGY,
+    qualityScore: FALLBACK_QUALITY_SCORE,
+    detectedIssues: [],
+    recommendedActions: [],
   };
 
   try {
@@ -50,10 +60,42 @@ function parseCoachOutput(rawText) {
       questions: limitList(parsed.questions, 3),
       checklist: limitList(parsed.checklist, 3),
       strategy: normalizeText(parsed.strategy) || FALLBACK_STRATEGY,
+      qualityScore: normalizeScore(parsed.qualityScore),
+      detectedIssues: limitList(parsed.detectedIssues, 3),
+      recommendedActions: limitList(parsed.recommendedActions, 3),
     };
   } catch (_error) {
     return fallback;
   }
+}
+
+function buildRefinementInput({ tool, currentPrompt, refinement }) {
+  return [
+    `Herramienta destino: ${normalizeText(tool)}`,
+    `Prompt o idea inicial del usuario: ${normalizeText(currentPrompt)}`,
+    `Pedido de refinamiento: ${normalizeText(refinement)}`,
+  ].join('\n');
+}
+
+function buildVariantInput({ tool, currentPrompt, variant, variantInstruction }) {
+  return [
+    `Herramienta destino: ${normalizeText(tool)}`,
+    `Prompt o idea inicial del usuario: ${normalizeText(currentPrompt)}`,
+    `Pedido de variante: ${normalizeText(variantInstruction) || normalizeText(variant)}`,
+  ].join('\n');
+}
+
+function normalizeCoachResponse({ tool, ...parsed }) {
+  return {
+    tool: normalizeText(tool) || 'No especificada',
+    improvedPrompt: removeForbiddenClaims(parsed.improvedPrompt),
+    questions: limitList(parsed.questions, 3),
+    checklist: limitList(parsed.checklist, 3),
+    strategy: normalizeText(parsed.strategy) || FALLBACK_STRATEGY,
+    qualityScore: normalizeScore(parsed.qualityScore),
+    detectedIssues: limitList(parsed.detectedIssues, 3),
+    recommendedActions: limitList(parsed.recommendedActions, 3),
+  };
 }
 
 function buildCoachInput(form) {
@@ -69,11 +111,15 @@ function formatCoachResponse({
   questions = [],
   checklist = [],
   strategy,
+  detectedIssues = [],
+  recommendedActions = [],
 }) {
   const safePrompt = removeForbiddenClaims(improvedPrompt);
   const visibleStrategy = normalizeText(strategy) || FALLBACK_STRATEGY;
   const visibleQuestions = limitList(questions, 3);
   const visibleChecklist = limitList(checklist, 3);
+  const visibleIssues = limitList(detectedIssues, 3);
+  const visibleActions = limitList(recommendedActions, 3);
   const questionText = visibleQuestions.length > 0
     ? visibleQuestions.map((question, index) => `${index + 1}. ${question}`).join('\n')
     : FALLBACK_NO_CONTEXT_GAPS;
@@ -86,6 +132,14 @@ function formatCoachResponse({
     '',
     `*Herramienta destino:* ${normalizeText(tool) || 'No especificada'}`,
     `*Estrategia aplicada:* ${visibleStrategy}`,
+    ...(visibleIssues.length > 0 ? [
+      '*Problemas detectados:*',
+      visibleIssues.map((issue, index) => `${index + 1}. ${issue}`).join('\n'),
+    ] : []),
+    ...(visibleActions.length > 0 ? [
+      '*Acciones recomendadas:*',
+      visibleActions.map((action) => `* ${action}`).join('\n'),
+    ] : []),
     '',
     '*Prompt mejorado:*',
     '',
@@ -108,26 +162,45 @@ function createPromptCoach({ generateText, systemPrompt } = {}) {
     throw new Error('createPromptCoach requires a generateText function');
   }
 
+  async function run(input, tool) {
+    const instructions = systemPrompt || readSystemPrompt();
+    const rawOutput = await generateText({ instructions, input });
+    const parsed = parseCoachOutput(rawOutput);
+    return normalizeCoachResponse({
+      tool,
+      ...parsed,
+    });
+  }
+
   return {
+    async generate(form) {
+      return run(buildCoachInput(form), form.tool);
+    },
+
     async improve(form) {
-      const input = buildCoachInput(form);
-      const instructions = systemPrompt || readSystemPrompt();
-      const rawOutput = await generateText({ instructions, input });
-      const parsed = parseCoachOutput(rawOutput);
-      return formatCoachResponse({
-        tool: form.tool,
-        ...parsed,
-      });
+      return formatCoachResponse(await this.generate(form));
+    },
+
+    async refine({ tool, currentPrompt, refinement }) {
+      return run(buildRefinementInput({ tool, currentPrompt, refinement }), tool);
+    },
+
+    async variant({ tool, currentPrompt, variant, variantInstruction }) {
+      return run(buildVariantInput({ tool, currentPrompt, variant, variantInstruction }), tool);
     },
   };
 }
 
 module.exports = {
   FALLBACK_STRATEGY,
+  FALLBACK_QUALITY_SCORE,
   FALLBACK_NO_CONTEXT_GAPS,
   buildCoachInput,
+  buildRefinementInput,
+  buildVariantInput,
   createPromptCoach,
   formatCoachResponse,
+  normalizeCoachResponse,
   parseCoachOutput,
   readSystemPrompt,
   removeForbiddenClaims,

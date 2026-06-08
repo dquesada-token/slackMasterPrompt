@@ -14,36 +14,72 @@ function promptCoachResponseSchema() {
         maxItems: 3,
         items: { type: 'string' },
       },
+      strategy: { type: 'string' },
+      qualityScore: { type: 'number' },
+      detectedIssues: {
+        type: 'array',
+        maxItems: 3,
+        items: { type: 'string' },
+      },
+      recommendedActions: {
+        type: 'array',
+        maxItems: 3,
+        items: { type: 'string' },
+      },
     },
-    required: ['improvedPrompt', 'questions', 'checklist'],
+    required: [
+      'improvedPrompt',
+      'questions',
+      'checklist',
+      'strategy',
+      'qualityScore',
+      'detectedIssues',
+      'recommendedActions',
+    ],
   };
 }
 
-async function createOpenAITextGenerator({ apiKey, model }) {
+function buildOpenAIResponseRequest({ model, reasoningEffort, instructions, input }) {
+  const request = {
+    model,
+    instructions,
+    input,
+    max_output_tokens: 2000,
+    text: {
+      format: {
+        type: 'json_schema',
+        name: 'prompt_coach_response',
+        strict: true,
+        schema: promptCoachResponseSchema(),
+      },
+    },
+  };
+
+  if (reasoningEffort) {
+    request.reasoning = { effort: reasoningEffort };
+  }
+
+  return request;
+}
+
+async function createOpenAITextGenerator({ apiKey, model, reasoningEffort }) {
   const { default: OpenAI } = await import('openai');
   const client = new OpenAI({ apiKey });
 
   return async function generateText({ instructions, input }) {
-    const response = await client.responses.create({
+    const response = await client.responses.create(buildOpenAIResponseRequest({
       model,
+      reasoningEffort,
       instructions,
       input,
-      max_output_tokens: 900,
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'prompt_coach_response',
-          strict: true,
-          schema: promptCoachResponseSchema(),
-        },
-      },
-    });
+    }));
 
     return response.output_text || '';
   };
 }
 
 module.exports = {
+  buildOpenAIResponseRequest,
   createOpenAITextGenerator,
   promptCoachResponseSchema,
 };

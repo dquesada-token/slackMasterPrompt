@@ -2,57 +2,125 @@
 
 ## Objetivo del proyecto
 
-Este proyecto es un MVP de un bot de Slack llamado **Slack Prompt Coach**.
+Este proyecto es un MVP/V1 de un bot de Slack llamado **Slack Prompt Coach**.
 
-Su función es ayudar a personas desarrolladoras a mejorar prompts antes de usarlos en herramientas como ChatGPT, Codex, Cursor, Copilot, Claude Code, Lovable o n8n.
+Su función es ayudar a personas desarrolladoras a mejorar prompts de desarrollo de software antes de usarlos en herramientas como ChatGPT, Codex, Cursor, GitHub Copilot, Claude Code u otra herramienta de desarrollo.
 
-El bot **no revisa código**, **no accede a repositorios**, **no analiza PRs** y **no ejecuta cambios**.
+El bot **no revisa código**, **no accede a repositorios**, **no analiza PRs**, **no ejecuta comandos del usuario** y **no modifica archivos de proyectos externos**. Solo mejora prompts.
 
 ---
 
-## Alcance del MVP
+## Comportamiento esperado del asistente en este repo
 
-El MVP debe hacer únicamente esto:
+Actuá como copiloto técnico realista, crítico y directo.
+
+Reglas:
+
+1. No des la razón automáticamente.
+2. Si una idea tiene problemas, decilo con claridad.
+3. Señalá supuestos no validados.
+4. Identificá riesgos técnicos, mantenimiento, seguridad, performance, testing y complejidad innecesaria.
+5. Si algo es sobreingeniería para este MVP, decilo explícitamente.
+6. No implementes cambios grandes sin explicar impacto, riesgos y alternativa simple.
+7. Priorizá soluciones simples, mantenibles, testeables e incrementales.
+8. No refactorices por gusto.
+9. No cambies comportamiento funcional sin justificarlo.
+10. Cuando revises código, buscá bugs reales, edge cases y riesgos de compatibilidad.
+11. Contestá preferentemente en español.
+
+Formato recomendado para evaluar ideas:
+
+```text
+- Veredicto técnico:
+- Lo que está bien:
+- Lo que no me convence:
+- Riesgos:
+- Supuestos:
+- Alternativa recomendada:
+- Siguiente paso concreto:
+```
+
+Formato recomendado para revisar código:
+
+```text
+- Hallazgos críticos:
+- Riesgos medios:
+- Mejoras opcionales:
+- Pruebas recomendadas:
+- Cambios que NO haría todavía:
+```
+
+---
+
+## Alcance actual de V1
+
+V1 permite:
 
 1. Recibir el comando `/prompt` en Slack.
-2. Abrir un modal con preguntas básicas.
-3. Tomar la información del usuario.
-4. Enviar esa información a OpenAI.
-5. Generar un prompt mejorado.
-6. Responder al usuario en Slack.
+2. Abrir un modal con herramienta destino y prompt/idea inicial.
+3. Enviar la información a OpenAI.
+4. Generar un prompt mejorado.
+5. Responder en Slack con Block Kit y fallback `text`.
+6. Mostrar hasta 3 problemas detectados, sin mostrar score numérico.
+7. Mostrar hasta 3 elementos de contexto por aclarar.
+8. Mostrar checklist breve.
+9. Permitir refinamientos sin DB:
+   - Más corto
+   - Más completo
+   - Agregar restricciones
+   - Agregar pruebas
+   - Criterios de aceptación
+10. Permitir variantes sin DB:
+    - Versión corta
+    - Versión completa
+    - Versión agentic
+    - Adaptar a Codex
+    - Adaptar a ChatGPT
+    - Adaptar a Cursor
+    - Adaptar a Copilot
+    - Adaptar a Claude Code
+11. Permitir message shortcut `Mejorar este prompt`.
+12. Usar `message.blocks` / `message.text` de Slack como fuente primaria para contexto de botones y cache temporal en memoria solo como fallback.
 
-No implementar todavía:
+V1 no debe implementar:
 
-* GitHub API
-* Jira
-* base de datos
-* dashboard
-* audio
-* RAG
-* carga de archivos
-* revisión de código
-* portal web
-* n8n
+- GitHub API
+- Jira
+- base de datos
+- dashboard
+- audio
+- RAG
+- carga de archivos
+- revisión de código
+- portal web
+- App Home
+- automatizaciones externas
+- analytics reales de feedback
+- botones `Útil` / `No útil`
 
 ---
 
 ## Arquitectura
 
-Usar esta arquitectura:
+Arquitectura obligatoria:
 
 ```text
 Slack
   ↓ Socket Mode
-Bot Node.js en Hostinger
+Bot Node.js
   ↓ HTTPS
 OpenAI API
   ↓
 Respuesta a Slack
 ```
 
-El bot debe usar **Slack Bolt con Socket Mode**.
+Reglas:
 
-No crear endpoint público para recibir eventos de Slack.
+- Usar **Slack Bolt con Socket Mode**.
+- No crear endpoint público para eventos de Slack.
+- No agregar servidor HTTP salvo necesidad explícita y justificada.
+- No agregar DB en V1.
+- Mantener JavaScript. No migrar a TypeScript en este MVP.
 
 ---
 
@@ -60,101 +128,83 @@ No crear endpoint público para recibir eventos de Slack.
 
 Usar:
 
-* Node.js 20+
-* JavaScript
-* Slack Bolt
-* OpenAI SDK
-* dotenv
-* PM2
-* GitHub para versionar el código
+- Node.js 20+
+- JavaScript CommonJS
+- Slack Bolt
+- OpenAI SDK
+- dotenv
+- PM2
+- GitHub para versionar código
 
-Mantener el proyecto simple. No usar TypeScript en el MVP.
+No usar por ahora:
+
+- TypeScript
+- frameworks HTTP adicionales
+- ORMs
+- colas
+- workers externos
+- proveedores de storage
 
 ---
 
 ## Flujo principal
 
 1. El usuario escribe `/prompt`.
-2. El bot abre un modal.
-3. El usuario completa el formulario.
-4. El bot procesa la información.
-5. El bot llama a OpenAI.
-6. El bot responde con un prompt mejorado.
+2. Slack envía el command payload al bot por Socket Mode.
+3. El bot hace `ack()`.
+4. El bot abre el modal principal.
+5. El usuario selecciona herramienta y pega su prompt/idea inicial.
+6. El bot hace `ack()` del modal.
+7. El bot llama a OpenAI usando el system prompt del proyecto.
+8. El bot normaliza la respuesta JSON.
+9. El bot responde al usuario en Slack con Block Kit.
+10. Si el usuario presiona refinamiento o variante, el bot genera una nueva versión sin guardar historial permanente.
 
 ---
 
 ## Campos del modal
 
-El modal debe pedir:
+El modal principal debe pedir únicamente:
 
-1. **¿Qué querés lograr con la IA?**
-2. **¿Qué herramienta vas a usar?**
+1. **Qué herramienta vas a usar**
+   - ChatGPT
+   - Codex
+   - Cursor
+   - GitHub Copilot
+   - Claude Code
+   - Otra
+2. **Pegá tu prompt o idea inicial**
 
-   * ChatGPT
-   * Codex
-   * Cursor
-   * GitHub Copilot
-   * Claude Code
-   * Lovable
-   * n8n
-   * Otra
-3. **¿Qué tecnología o contexto aplica?**
-4. **¿Qué salida esperás?**
-5. **¿Qué NO debe hacer la IA?**
+Puede tener ayuda contextual simple, como casos de uso y ejemplos, siempre que no complique el flujo principal.
 
 ---
 
-## Comportamiento esperado
+## Formato esperado de respuesta
 
 El bot debe generar una respuesta con:
 
 1. Herramienta destino.
-2. Prompt mejorado.
-3. Máximo 3 preguntas aclaratorias.
-4. Checklist breve antes de usar el prompt.
+2. Problemas detectados, máximo 3, si existen.
+3. Prompt mejorado.
+4. Máximo 3 elementos de contexto que conviene aclarar.
+5. Checklist breve, máximo 3 elementos.
+6. Estrategia aplicada.
+7. Acciones de refinamiento y variantes.
 
-El bot nunca debe decir que revisó código, archivos, repositorios o PRs.
+No debe mostrar:
+
+- `Calidad del prompt original: N/100`
+- botones `Útil` / `No útil`
+
+Si no hay contexto crítico faltante, usar:
+
+```text
+No detecté contexto crítico faltante. El prompt tiene suficiente información para una primera iteración.
+```
 
 ---
 
-## Formato de respuesta
-
-Usar este formato:
-
-````markdown
-Hola, te preparé una versión mejorada del prompt.
-
-*Herramienta destino:* [herramienta]
-
-*Prompt mejorado:*
-
-```text
-[prompt generado]
-````
-
-*Preguntas pendientes:*
-
-1. [pregunta 1]
-2. [pregunta 2]
-3. [pregunta 3]
-
-*Checklist antes de usarlo:*
-
-* [check 1]
-* [check 2]
-* [check 3]
-
-````
-
-Si no hay preguntas pendientes, escribir:
-
-```text
-No detecté preguntas críticas pendientes. El prompt ya tiene suficiente contexto para una primera iteración.
-````
-
----
-
-## Estructura sugerida
+## Estructura actual
 
 ```text
 slack-prompt-coach/
@@ -163,6 +213,9 @@ slack-prompt-coach/
   │   ├── slack/
   │   │   ├── commands.js
   │   │   ├── modals.js
+  │   │   ├── promptContextCache.js
+  │   │   ├── responseBlocks.js
+  │   │   ├── shortcuts.js
   │   │   └── views.js
   │   ├── llm/
   │   │   └── openaiClient.js
@@ -172,26 +225,38 @@ slack-prompt-coach/
   │   └── utils/
   │       ├── env.js
   │       └── logger.js
+  ├── docs/
+  │   ├── arquitectura-y-archivos-js.md
+  │   └── sprints/
+  ├── test/
   ├── .env.example
   ├── .gitignore
   ├── package.json
+  ├── package-lock.json
   ├── ecosystem.config.js
   ├── README.md
   └── AGENTS.md
+```
+
+Ver explicación de archivos en:
+
+```text
+docs/arquitectura-y-archivos-js.md
 ```
 
 ---
 
 ## Variables de entorno
 
-Crear `.env.example` con:
+`.env.example` debe incluir:
 
 ```env
 SLACK_BOT_TOKEN=xoxb-your-token
 SLACK_APP_TOKEN=xapp-your-token
 SLACK_SIGNING_SECRET=your-signing-secret
 OPENAI_API_KEY=your-openai-api-key
-OPENAI_MODEL=gpt-5.4-mini
+OPENAI_MODEL=gpt-5.5
+OPENAI_REASONING_EFFORT=medium
 NODE_ENV=development
 LOG_LEVEL=info
 ```
@@ -200,68 +265,63 @@ Nunca subir `.env` al repositorio.
 
 ---
 
-## GitHub y despliegue en Hostinger
+## Reglas de seguridad
 
-El proyecto debe quedar preparado para subirse a un repositorio privado de GitHub y luego bajarse desde Hostinger.
+- No guardar secretos.
+- No imprimir tokens en logs.
+- No guardar prompts completos de forma persistente en V1.
+- No guardar código fuente enviado por usuarios.
+- No conectarse a GitHub API.
+- No ejecutar código del usuario.
+- No afirmar acceso a repositorios, archivos, PRs o ejecución.
+- Usar Socket Mode.
+- Mantener `.env` fuera de GitHub.
+- Mantener `GITAcceso.txt`, logs y temporales fuera de GitHub.
+- Los logs no deben incluir prompts completos.
 
-El flujo esperado es:
+---
 
-```text
-Desarrollo local
-  ↓ git push
-GitHub privado
-  ↓ git clone / git pull
-Hostinger Linux
-  ↓ pm2 restart
-Bot actualizado
+## Slack: IDs importantes
+
+No cambiar estos IDs sin actualizar configuración de Slack y tests:
+
+- Slash command: `/prompt`
+- Message shortcut callback ID: `prompt_coach_message_shortcut`
+- Modal callback ID: `prompt_coach_submission`
+- Variante select action ID: `prompt_variant_select`
+
+Los action IDs de refinamiento viven en `src/slack/responseBlocks.js`.
+
+---
+
+## OpenAI
+
+La app usa OpenAI Responses API con JSON schema estricto.
+
+Campos esperados:
+
+```js
+{
+  improvedPrompt: string,
+  questions: string[],
+  checklist: string[],
+  strategy: string,
+  qualityScore: number,
+  detectedIssues: string[],
+  recommendedActions: string[]
+}
 ```
 
-El repositorio debe incluir:
+`qualityScore` existe internamente, pero no debe mostrarse como score visible en Slack.
 
-* código fuente
-* `README.md`
-* `AGENTS.md`
-* `.env.example`
-* `.gitignore`
-* `package.json`
-* `ecosystem.config.js`
+---
 
-El repositorio NO debe incluir:
+## PM2 y despliegue
 
-* `.env`
-* tokens
-* API keys
-* `node_modules`
-* logs
-* archivos temporales
-
-Crear `.gitignore` con:
-
-```gitignore
-node_modules/
-.env
-.env.*
-logs/
-*.log
-.DS_Store
-```
-
-El README debe incluir pasos para:
-
-1. Clonar el repo en Hostinger.
-2. Crear el archivo `.env`.
-3. Instalar dependencias.
-4. Ejecutar con PM2.
-5. Actualizar con `git pull`.
-6. Reiniciar el bot con PM2.
-
-Comandos esperados en Hostinger:
+El proyecto debe poder desplegarse manualmente en Hostinger o Linux:
 
 ```bash
-git clone git@github.com:USUARIO/slack-prompt-coach.git
-cd slack-prompt-coach
 npm install
-nano .env
 pm2 start ecosystem.config.js
 pm2 save
 pm2 logs slack-prompt-coach
@@ -270,71 +330,53 @@ pm2 logs slack-prompt-coach
 Para actualizar:
 
 ```bash
-cd slack-prompt-coach
 git pull origin main
 npm install
 pm2 restart slack-prompt-coach
 pm2 logs slack-prompt-coach
 ```
 
-No implementar GitHub Actions en el MVP, salvo que se solicite después.
+No implementar GitHub Actions en el MVP salvo pedido explícito.
 
 ---
 
-## Reglas de seguridad
+## Tests y validación
 
-* No guardar secretos.
-* No imprimir tokens en logs.
-* No guardar prompts completos en el MVP.
-* No guardar código fuente enviado por usuarios.
-* No conectarse a GitHub API.
-* No ejecutar código.
-* No afirmar acceso a repositorios.
-* Usar Socket Mode.
-* Mantener `.env` fuera de GitHub.
+Antes de considerar un cambio terminado, ejecutar:
 
----
-
-## PM2
-
-Crear `ecosystem.config.js`:
-
-```js
-module.exports = {
-  apps: [
-    {
-      name: "slack-prompt-coach",
-      script: "src/index.js",
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: "300M",
-      env: {
-        NODE_ENV: "production"
-      }
-    }
-  ]
-};
+```bash
+npm run check
 ```
 
+Ese comando debe pasar.
+
+Tests mínimos esperados para cambios funcionales:
+
+- construcción de modales o bloques Slack
+- registro de handlers `app.command`, `app.view`, `app.action`, `app.shortcut`
+- extracción segura de datos desde Slack
+- fallback cuando falta contexto
+- no logging de secretos ni prompts completos
+- schema OpenAI cuando cambia la salida del modelo
+
 ---
 
-## Criterios de aceptación
+## Criterios de aceptación actuales
 
-El MVP está listo cuando:
+El proyecto está sano cuando:
 
 1. El bot inicia con Socket Mode.
-2. El comando `/prompt` funciona.
-3. El modal se abre correctamente.
-4. El usuario puede enviar el formulario.
-5. El bot llama a OpenAI.
-6. El bot devuelve un prompt mejorado.
-7. La respuesta incluye preguntas y checklist.
-8. El bot corre con PM2 en Hostinger.
-9. El código puede subirse a GitHub sin secretos.
-10. El código puede bajarse desde Hostinger con `git clone`.
-11. Las actualizaciones pueden aplicarse con `git pull` y `pm2 restart`.
-12. No se implementó nada fuera del MVP.
+2. `/prompt` abre el modal.
+3. El usuario puede enviar herramienta y prompt inicial.
+4. El bot llama a OpenAI.
+5. El bot devuelve prompt mejorado en Slack.
+6. La respuesta incluye contexto por aclarar y checklist.
+7. Los refinamientos funcionan sin DB.
+8. Las variantes funcionan sin DB.
+9. El shortcut de mensaje abre el modal prellenado.
+10. `npm run check` pasa.
+11. El código puede subirse a GitHub sin secretos.
+12. El bot puede correr con PM2 en Hostinger.
 
 ---
 
@@ -342,6 +384,4 @@ El MVP está listo cuando:
 
 No sobreingenierizar.
 
-Construir primero una versión simple, estable y funcional del bot para mejorar prompts desde Slack.
-
-El proyecto debe quedar listo para versionarse en GitHub y desplegarse manualmente en Hostinger.
+Este proyecto debe seguir siendo una versión simple, estable y funcional de un bot para mejorar prompts desde Slack.

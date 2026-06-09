@@ -65,7 +65,7 @@ Slack
   ↓ Socket Mode
 Bot Node.js con Slack Bolt
   ↓ HTTPS
-OpenAI Responses API
+Azure Foundry Responses API
   ↓
 Respuesta Slack con Block Kit + fallback text
 ```
@@ -79,7 +79,7 @@ sequenceDiagram
   participant U as Usuario
   participant S as Slack
   participant B as Bot Node.js
-  participant O as OpenAI
+  participant A as Azure Foundry
 
   B->>S: Abre conexión Socket Mode usando SLACK_APP_TOKEN
   U->>S: Escribe /prompt
@@ -91,8 +91,8 @@ sequenceDiagram
   U->>S: Envía modal
   S->>B: view_submission por Socket Mode
   B->>S: ack()
-  B->>O: Llama OpenAI
-  O->>B: Devuelve JSON estructurado
+  B->>A: Llama Azure Foundry
+  A->>B: Devuelve JSON estructurado
   B->>S: client.chat.postEphemeral()
   S->>U: Muestra prompt mejorado
 ```
@@ -109,7 +109,8 @@ Slack no llama un endpoint HTTP público del bot. El bot mantiene una conexión 
 - Slack Bot Token `xoxb-...`
 - Slack App-Level Token `xapp-...`
 - Slack Signing Secret
-- OpenAI API Key
+- Azure OpenAI / Foundry API Key
+- Azure Foundry endpoint `/openai/v1`
 - PM2 para correr en Hostinger/Linux
 
 ---
@@ -136,9 +137,10 @@ Ejemplo:
 SLACK_BOT_TOKEN=xoxb-your-token
 SLACK_APP_TOKEN=xapp-your-token
 SLACK_SIGNING_SECRET=your-signing-secret
-OPENAI_API_KEY=your-openai-api-key
-OPENAI_MODEL=gpt-5.5
-OPENAI_REASONING_EFFORT=medium
+AZURE_OPENAI_API_KEY=your-azure-openai-api-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.services.ai.azure.com/openai/v1
+AZURE_OPENAI_MODEL=gpt-5.2
+AZURE_OPENAI_REASONING_EFFORT=high
 NODE_ENV=development
 LOG_LEVEL=info
 ```
@@ -146,8 +148,9 @@ LOG_LEVEL=info
 Notas:
 
 - `.env` no debe subirse al repositorio.
-- Si `OPENAI_MODEL` no está disponible para la cuenta, el bot puede iniciar pero fallará al generar prompts.
-- `OPENAI_REASONING_EFFORT` puede ajustarse según costo/calidad/latencia.
+- Si pegás el endpoint completo con `/responses`, la app lo normaliza automáticamente a la base `/openai/v1`.
+- Si `AZURE_OPENAI_MODEL` no está disponible en tu recurso, el bot puede iniciar pero fallará al generar prompts.
+- Si `AZURE_OPENAI_REASONING_EFFORT` falta o es inválido, la app usa fallback a `high`.
 
 ---
 
@@ -213,7 +216,7 @@ src/
     shortcuts.js
     views.js
   llm/
-    openaiClient.js
+    azureOpenAIClient.js
   prompt/
     promptCoach.js
     system-prompt.md
@@ -239,7 +242,7 @@ docs/arquitectura-y-archivos-js.md
 
 ## Descripción rápida de archivos principales
 
-- `src/index.js` — arranca la app, crea Slack Bolt, OpenAI y registra handlers.
+- `src/index.js` — arranca la app, crea Slack Bolt, Azure Foundry y registra handlers.
 - `src/slack/commands.js` — registra `/prompt` y abre el modal principal.
 - `src/slack/modals.js` — construye modales y extrae datos del formulario.
 - `src/slack/views.js` — maneja submissions, botones, selects y errores Slack.
@@ -248,7 +251,7 @@ docs/arquitectura-y-archivos-js.md
 - `src/slack/shortcuts.js` — registra el shortcut `Mejorar este prompt`.
 - `src/prompt/promptCoach.js` — lógica de negocio, parsing, normalización y guardrails.
 - `src/prompt/system-prompt.md` — instrucciones principales para el modelo.
-- `src/llm/openaiClient.js` — integración con OpenAI Responses API y JSON schema.
+- `src/llm/azureOpenAIClient.js` — integración con Azure Foundry Responses API y JSON schema.
 - `src/utils/env.js` — validación de variables de entorno.
 - `src/utils/logger.js` — logger simple con filtrado de secretos.
 
@@ -267,7 +270,7 @@ views.js recibe el submit
   ↓
 promptCoach.js arma el input
   ↓
-openaiClient.js llama OpenAI
+azureOpenAIClient.js llama Azure Foundry
   ↓
 promptCoach.js normaliza la respuesta
   ↓

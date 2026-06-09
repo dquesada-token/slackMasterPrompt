@@ -17,7 +17,7 @@ Modal de Slack
   ↓
 Prompt Coach interno
   ↓
-OpenAI Responses API con JSON schema
+Azure Foundry Responses API con JSON schema
   ↓
 Respuesta Slack con Block Kit + fallback text
   ↓
@@ -26,14 +26,14 @@ Botones de refinamiento / selector de variantes
 
 El bot no usa base de datos en V1. Para botones de refinamiento, la fuente primaria de contexto es el payload de Slack (`message.blocks` o `message.text`). Solo usa cache temporal en memoria como fallback cuando Slack no entrega contexto suficiente.
 
-### Flujo de comunicación Slack → bot → OpenAI
+### Flujo de comunicación Slack → bot → Azure Foundry
 
 ```mermaid
 sequenceDiagram
   participant U as Usuario
   participant S as Slack
   participant B as Bot Node.js
-  participant O as OpenAI
+  participant A as Azure Foundry
 
   B->>S: Abre conexión Socket Mode usando SLACK_APP_TOKEN
   U->>S: Escribe /prompt
@@ -45,8 +45,8 @@ sequenceDiagram
   U->>S: Envía modal
   S->>B: view_submission por Socket Mode
   B->>S: ack()
-  B->>O: Llama OpenAI
-  O->>B: Devuelve JSON estructurado
+  B->>A: Llama Azure Foundry
+  A->>B: Devuelve JSON estructurado
   B->>S: client.chat.postEphemeral()
   S->>U: Muestra prompt mejorado
 ```
@@ -65,7 +65,7 @@ Responsabilidades:
 
 - Cargar variables desde `.env` usando `dotenv`.
 - Validar configuración con `loadEnv()`.
-- Crear el generador de texto de OpenAI.
+- Crear el generador de texto de Azure Foundry.
 - Crear el `promptCoach`.
 - Crear la app de Slack Bolt con Socket Mode.
 - Registrar handlers de Slack:
@@ -305,15 +305,15 @@ Este archivo es crítico. Cambiarlo puede alterar fuertemente la calidad del bot
 
 ---
 
-## Capa OpenAI
+## Capa Azure Foundry
 
-### `src/llm/openaiClient.js`
+### `src/llm/azureOpenAIClient.js`
 
-Adaptador entre la app y OpenAI.
+Adaptador entre la app y Azure Foundry.
 
 Responsabilidades:
 
-- Crear el cliente OpenAI.
+- Crear el cliente del SDK OpenAI configurado contra Azure Foundry.
 - Construir requests para Responses API.
 - Forzar salida con JSON schema estricto.
 - Configurar:
@@ -356,7 +356,9 @@ Variables obligatorias:
 - `SLACK_BOT_TOKEN`
 - `SLACK_APP_TOKEN`
 - `SLACK_SIGNING_SECRET`
-- `OPENAI_API_KEY`
+- `AZURE_OPENAI_API_KEY`
+- `AZURE_OPENAI_ENDPOINT`
+- `AZURE_OPENAI_MODEL`
 
 ---
 

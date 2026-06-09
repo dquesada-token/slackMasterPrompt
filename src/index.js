@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const { App } = require('@slack/bolt');
-const { createOpenAITextGenerator } = require('./llm/openaiClient');
+const { createAzureTextGenerator } = require('./llm/azureOpenAIClient');
 const { createPromptCoach } = require('./prompt/promptCoach');
 const { registerPromptCommand } = require('./slack/commands');
 const { registerPromptShortcut } = require('./slack/shortcuts');
@@ -12,10 +12,11 @@ const { createLogger } = require('./utils/logger');
 async function buildApp() {
   const env = loadEnv();
   const logger = createLogger(env.LOG_LEVEL);
-  const generateText = await createOpenAITextGenerator({
-    apiKey: env.OPENAI_API_KEY,
-    model: env.OPENAI_MODEL,
-    reasoningEffort: env.OPENAI_REASONING_EFFORT,
+  const generateText = await createAzureTextGenerator({
+    apiKey: env.AZURE_OPENAI_API_KEY,
+    baseURL: env.AZURE_OPENAI_ENDPOINT,
+    model: env.AZURE_OPENAI_MODEL,
+    reasoningEffort: env.AZURE_OPENAI_REASONING_EFFORT,
   });
   const coach = createPromptCoach({ generateText });
 
@@ -38,8 +39,8 @@ async function start() {
   await app.start(env.PORT);
   logger.info('Slack Prompt Coach started in Socket Mode', {
     nodeEnv: env.NODE_ENV,
-    model: env.OPENAI_MODEL,
-    reasoningEffort: env.OPENAI_REASONING_EFFORT,
+    model: env.AZURE_OPENAI_MODEL,
+    reasoningEffort: env.AZURE_OPENAI_REASONING_EFFORT,
   });
 }
 

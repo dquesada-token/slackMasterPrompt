@@ -39,7 +39,7 @@ function promptCoachResponseSchema() {
   };
 }
 
-function buildOpenAIResponseRequest({ model, reasoningEffort, instructions, input }) {
+function buildAzureOpenAIResponseRequest({ model, reasoningEffort, instructions, input }) {
   const request = {
     model,
     instructions,
@@ -62,12 +62,12 @@ function buildOpenAIResponseRequest({ model, reasoningEffort, instructions, inpu
   return request;
 }
 
-async function createOpenAITextGenerator({ apiKey, model, reasoningEffort }) {
-  const { default: OpenAI } = await import('openai');
-  const client = new OpenAI({ apiKey });
+async function createAzureTextGenerator({ apiKey, baseURL, model, reasoningEffort, OpenAIClass }) {
+  const ResolvedOpenAIClass = OpenAIClass || (await import('openai')).default;
+  const client = new ResolvedOpenAIClass({ apiKey, baseURL });
 
   return async function generateText({ instructions, input }) {
-    const response = await client.responses.create(buildOpenAIResponseRequest({
+    const response = await client.responses.create(buildAzureOpenAIResponseRequest({
       model,
       reasoningEffort,
       instructions,
@@ -79,7 +79,7 @@ async function createOpenAITextGenerator({ apiKey, model, reasoningEffort }) {
 }
 
 module.exports = {
-  buildOpenAIResponseRequest,
-  createOpenAITextGenerator,
+  buildAzureOpenAIResponseRequest,
+  createAzureTextGenerator,
   promptCoachResponseSchema,
 };

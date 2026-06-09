@@ -218,7 +218,7 @@ slack-prompt-coach/
   │   │   ├── shortcuts.js
   │   │   └── views.js
   │   ├── llm/
-  │   │   └── openaiClient.js
+  │   │   └── azureOpenAIClient.js
   │   ├── prompt/
   │   │   ├── promptCoach.js
   │   │   └── system-prompt.md
@@ -254,9 +254,10 @@ docs/arquitectura-y-archivos-js.md
 SLACK_BOT_TOKEN=xoxb-your-token
 SLACK_APP_TOKEN=xapp-your-token
 SLACK_SIGNING_SECRET=your-signing-secret
-OPENAI_API_KEY=your-openai-api-key
-OPENAI_MODEL=gpt-5.5
-OPENAI_REASONING_EFFORT=medium
+AZURE_OPENAI_API_KEY=your-azure-openai-api-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.services.ai.azure.com/openai/v1
+AZURE_OPENAI_MODEL=gpt-5.2
+AZURE_OPENAI_REASONING_EFFORT=high
 NODE_ENV=development
 LOG_LEVEL=info
 ```
@@ -294,9 +295,9 @@ Los action IDs de refinamiento viven en `src/slack/responseBlocks.js`.
 
 ---
 
-## OpenAI
+## Azure Foundry
 
-La app usa OpenAI Responses API con JSON schema estricto.
+La app usa Azure Foundry Responses API con JSON schema estricto.
 
 Campos esperados:
 

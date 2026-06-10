@@ -10,7 +10,7 @@ El objetivo no es revisar código ni conectarse a repositorios. El bot toma una 
 
 - Recibe el comando `/prompt` en Slack.
 - Abre un modal para elegir herramienta destino y pegar un prompt o idea inicial.
-- Envía el pedido a OpenAI usando un system prompt especializado.
+- Envía el pedido a Azure Foundry usando un system prompt especializado.
 - Devuelve en Slack:
   - herramienta destino
   - problemas detectados, máximo 3
@@ -113,6 +113,27 @@ Slack no llama un endpoint HTTP público del bot. El bot mantiene una conexión 
 - Azure Foundry endpoint `/openai/v1`
 - PM2 para correr en Hostinger/Linux
 
+## Dependencias de la solución
+
+### Dependencias de runtime
+
+- `@slack/bolt`
+- `dotenv`
+- `openai` (usado como SDK contra Azure Foundry)
+
+### Dependencias de sistema
+
+- Node.js 20+
+- npm
+- PM2
+- Acceso a una Slack App con Socket Mode
+- Credenciales de Azure Foundry válidas
+
+### Dependencias operativas opcionales
+
+- `ssh` para entrar al servidor
+- `bash` para ejecutar los scripts locales del servidor
+
 ---
 
 ## Instalación local
@@ -200,6 +221,33 @@ npm run check
 Ejecuta tests y chequeo sintáctico de archivos clave.
 
 Usar `npm run check` antes de subir cambios.
+
+## Comandos para validar que todo está OK
+
+### Validación local
+
+```bash
+npm install
+npm test
+npm run check
+```
+
+### Validación operativa en Linux con PM2
+
+```bash
+pm2 status
+pm2 logs slack-prompt-coach
+systemctl status pm2-ubuntu --no-pager
+```
+
+### Validación rápida dentro del servidor
+
+```bash
+cd /home/ubuntu/slack-prompt-coach/appscript
+./start.sh
+./logs.sh
+./stop.sh
+```
 
 ---
 
@@ -294,7 +342,7 @@ Cuando el usuario presiona un botón:
    - `message.text` del payload de Slack
    - cache temporal en memoria, solo si Slack no trae suficiente contexto
 4. Manda un mensaje privado indicando que está generando.
-5. Llama a OpenAI con una instrucción específica del botón.
+5. Llama a Azure Foundry con una instrucción específica del botón.
 6. Devuelve una nueva respuesta.
 
 El cache dura 15 minutos y se pierde si el proceso se reinicia. Es solo un fallback para casos donde Slack no entregue el mensaje/contexto suficiente en la interacción; no es la fuente primaria ni una persistencia real.
@@ -328,6 +376,35 @@ pm2 logs slack-prompt-coach
 
 Si el repo se clona por HTTPS, usar la URL HTTPS del repositorio en lugar de SSH.
 
+## Scripts operativos en el servidor
+
+La carpeta `appscript/` contiene scripts simples para operar la app una vez que ya entraste por SSH al servidor.
+
+```text
+appscript/
+  start.sh      -> arranca o reinicia la app con PM2
+  stop.sh       -> detiene la app en PM2
+  logs.sh       -> sigue logs en vivo de PM2
+  updateApp.sh  -> actualiza código, instala dependencias y reinicia la app
+```
+
+Uso recomendado:
+
+```bash
+ssh -i "dev-ia-key.pem" ubuntu@ec2-44-205-167-213.compute-1.amazonaws.com
+cd /home/ubuntu/slack-prompt-coach/appscript
+./start.sh
+./logs.sh
+./stop.sh
+./updateApp.sh
+```
+
+Los scripts asumen:
+
+- path de la app `/home/ubuntu/slack-prompt-coach`
+- proceso PM2 `slack-prompt-coach`
+- rama de actualización `main`
+
 ---
 
 ## Seguridad
@@ -360,7 +437,7 @@ Cobertura esperada:
 - env
 - modales
 - extracción de datos Slack
-- OpenAI schema
+- Azure Foundry schema
 - prompt coach
 - Block Kit
 - interacciones
@@ -376,7 +453,7 @@ Cobertura esperada:
 Último estado validado:
 
 ```text
-npm run check → 47 tests pasando
+npm run check
 ```
 
 El bot puede correr localmente con:

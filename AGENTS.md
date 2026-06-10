@@ -58,7 +58,7 @@ V1 permite:
 
 1. Recibir el comando `/prompt` en Slack.
 2. Abrir un modal con herramienta destino y prompt/idea inicial.
-3. Enviar la información a OpenAI.
+3. Enviar la información a Azure Foundry.
 4. Generar un prompt mejorado.
 5. Responder en Slack con Block Kit y fallback `text`.
 6. Mostrar hasta 3 problemas detectados, sin mostrar score numérico.
@@ -109,7 +109,7 @@ Slack
   ↓ Socket Mode
 Bot Node.js
   ↓ HTTPS
-OpenAI API
+Azure Foundry Responses API
   ↓
 Respuesta a Slack
 ```
@@ -131,7 +131,7 @@ Usar:
 - Node.js 20+
 - JavaScript CommonJS
 - Slack Bolt
-- OpenAI SDK
+- OpenAI SDK configurado contra Azure Foundry
 - dotenv
 - PM2
 - GitHub para versionar código
@@ -155,7 +155,7 @@ No usar por ahora:
 4. El bot abre el modal principal.
 5. El usuario selecciona herramienta y pega su prompt/idea inicial.
 6. El bot hace `ack()` del modal.
-7. El bot llama a OpenAI usando el system prompt del proyecto.
+7. El bot llama a Azure Foundry usando el system prompt del proyecto.
 8. El bot normaliza la respuesta JSON.
 9. El bot responde al usuario en Slack con Block Kit.
 10. Si el usuario presiona refinamiento o variante, el bot genera una nueva versión sin guardar historial permanente.
@@ -231,6 +231,11 @@ slack-prompt-coach/
   ├── test/
   ├── .env.example
   ├── .gitignore
+  ├── appscript/
+  │   ├── logs.sh
+  │   ├── start.sh
+  │   ├── stop.sh
+  │   └── updateApp.sh
   ├── package.json
   ├── package-lock.json
   ├── ecosystem.config.js
@@ -358,7 +363,7 @@ Tests mínimos esperados para cambios funcionales:
 - extracción segura de datos desde Slack
 - fallback cuando falta contexto
 - no logging de secretos ni prompts completos
-- schema OpenAI cuando cambia la salida del modelo
+- schema Azure Foundry cuando cambia la salida del modelo
 
 ---
 
@@ -369,7 +374,7 @@ El proyecto está sano cuando:
 1. El bot inicia con Socket Mode.
 2. `/prompt` abre el modal.
 3. El usuario puede enviar herramienta y prompt inicial.
-4. El bot llama a OpenAI.
+4. El bot llama a Azure Foundry.
 5. El bot devuelve prompt mejorado en Slack.
 6. La respuesta incluye contexto por aclarar y checklist.
 7. Los refinamientos funcionan sin DB.
@@ -378,6 +383,7 @@ El proyecto está sano cuando:
 10. `npm run check` pasa.
 11. El código puede subirse a GitHub sin secretos.
 12. El bot puede correr con PM2 en Hostinger.
+13. Los scripts de `appscript/` permiten arrancar, apagar, actualizar y ver logs de la app directamente dentro del servidor Linux.
 
 ---
 

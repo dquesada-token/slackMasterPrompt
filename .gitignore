@@ -8,6 +8,7 @@ local-keys/
 *.pem
 .DS_Store
 GITAcceso.txt
+Accesos.txt
 .codex/
 docs/superpowers/
 .atl/

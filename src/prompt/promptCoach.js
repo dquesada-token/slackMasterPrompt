@@ -4,6 +4,7 @@ const path = require('node:path');
 const FALLBACK_NO_CONTEXT_GAPS = 'No detecté contexto crítico faltante. El prompt tiene suficiente información para una primera iteración.';
 const FALLBACK_STRATEGY = 'Prompt técnico estructurado con guardrails de alcance y calidad';
 const FALLBACK_QUALITY_SCORE = 70;
+const FALLBACK_RECOVERY_PROMPT = 'La respuesta del modelo salió incompleta y no pude recuperar un prompt confiable. Volvé a intentarlo con un prompt más corto o dividilo en partes.';
 
 const FORBIDDEN_CLAIM_PATTERNS = [
   /(?:ya\s+)?revis[ée]\s+(?:el|la|los|las)?\s*(c[oó]digo|repositorio|repo|pull request|pr|archivo|archivos)/gi,
@@ -42,9 +43,181 @@ function removeForbiddenClaims(text) {
   return safeText;
 }
 
+function decodeJsonString(value) {
+  const normalized = String(value || '').trim();
+  if (!normalized) return '';
+
+  try {
+    return JSON.parse(`"${normalized}"`);
+  } catch (_error) {
+    return normalized
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\');
+  }
+}
+
+function findFieldStart(rawText, fieldName) {
+  return String(rawText || '').indexOf(`"${fieldName}"`);
+}
+
+function findStringValueStart(rawText, fieldName) {
+  const start = findFieldStart(rawText, fieldName);
+  if (start < 0) return -1;
+
+  const colonIndex = String(rawText).indexOf(':', start);
+  if (colonIndex < 0) return -1;
+
+  return String(rawText).indexOf('"', colonIndex);
+}
+
+function nextFieldBreakIndex(rawText, valueStart, fieldName) {
+  const nextFieldMarkers = [
+    'questions',
+    'checklist',
+    'strategy',
+    'qualityScore',
+    'detectedIssues',
+    'recommendedActions',
+    'prompt',
+  ]
+    .filter((candidate) => candidate !== fieldName)
+    .map((candidate) => `"${candidate}"`);
+
+  const endCandidates = nextFieldMarkers
+    .map((marker) => String(rawText).indexOf(`,${marker}`, valueStart))
+    .filter((index) => index >= 0);
+
+  const closingBraceIndex = String(rawText).indexOf('}', valueStart);
+  if (closingBraceIndex >= 0) endCandidates.push(closingBraceIndex);
+
+  return endCandidates.length > 0 ? Math.min(...endCandidates) : -1;
+}
+
+function stripTrailingPromptArtifacts(text) {
+  return String(text || '')
+    .replace(/(?:\\n|\n)?text\s*$/i, '')
+    .replace(/(?:\\n|\n)?[{[]\s*$/g, '')
+    .trim();
+}
+
+function extractStringField(rawText, fieldName) {
+  const valueStart = findStringValueStart(rawText, fieldName);
+  if (valueStart < 0) return '';
+
+  let cursor = valueStart + 1;
+  let escaped = false;
+  while (cursor < rawText.length) {
+    const char = rawText[cursor];
+
+    if (escaped) {
+      escaped = false;
+      cursor += 1;
+      continue;
+    }
+
+    if (char === '\\') {
+      escaped = true;
+      cursor += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      return stripTrailingPromptArtifacts(decodeJsonString(rawText.slice(valueStart + 1, cursor)));
+    }
+
+    cursor += 1;
+  }
+
+  const breakIndex = nextFieldBreakIndex(rawText, valueStart + 1, fieldName);
+  const rawValue = breakIndex >= 0
+    ? rawText.slice(valueStart + 1, breakIndex)
+    : rawText.slice(valueStart + 1);
+
+  return stripTrailingPromptArtifacts(
+    decodeJsonString(
+      rawValue
+        .replace(/",?\s*$/g, '')
+        .replace(/,\s*$/g, '')
+    )
+  );
+}
+
+function extractArrayField(rawText, fieldName) {
+  const fieldStart = findFieldStart(rawText, fieldName);
+  if (fieldStart < 0) return [];
+
+  const arrayStart = String(rawText).indexOf('[', fieldStart);
+  if (arrayStart < 0) return [];
+
+  const arrayEnd = String(rawText).indexOf(']', arrayStart);
+  const rawArray = arrayEnd >= 0
+    ? rawText.slice(arrayStart, arrayEnd + 1)
+    : `${rawText.slice(arrayStart)}]`;
+
+  try {
+    return limitList(JSON.parse(rawArray), 3);
+  } catch (_error) {
+    const items = [];
+    const itemPattern = /"((?:\\.|[^"\\])*)"/g;
+    let match = itemPattern.exec(rawArray);
+    while (match && items.length < 3) {
+      const value = normalizeText(decodeJsonString(match[1]));
+      if (value) items.push(value);
+      match = itemPattern.exec(rawArray);
+    }
+    return items;
+  }
+}
+
+function looksLikeRawJsonDocument(text) {
+  const normalized = normalizeText(text);
+  if (!normalized) return false;
+
+  return (
+    /^[{\[]/.test(normalized) ||
+    /^text\s*[{\[]/i.test(normalized) ||
+    /"improvedPrompt"\s*:/.test(normalized)
+  );
+}
+
+function cleanRecoveredPrompt(text) {
+  return removeForbiddenClaims(
+    normalizeText(text)
+      .replace(/^text\s*/i, '')
+      .replace(/^[{[]+/, '')
+      .trim()
+  );
+}
+
+function recoverCoachOutput(rawText, fallback) {
+  const recoveredPrompt = cleanRecoveredPrompt(
+    extractStringField(rawText, 'improvedPrompt') || extractStringField(rawText, 'prompt')
+  );
+
+  if (!recoveredPrompt || looksLikeRawJsonDocument(recoveredPrompt)) {
+    return {
+      ...fallback,
+      improvedPrompt: FALLBACK_RECOVERY_PROMPT,
+    };
+  }
+
+  return {
+    improvedPrompt: recoveredPrompt,
+    questions: extractArrayField(rawText, 'questions'),
+    checklist: extractArrayField(rawText, 'checklist'),
+    strategy: normalizeText(extractStringField(rawText, 'strategy')) || FALLBACK_STRATEGY,
+    qualityScore: FALLBACK_QUALITY_SCORE,
+    detectedIssues: extractArrayField(rawText, 'detectedIssues'),
+    recommendedActions: extractArrayField(rawText, 'recommendedActions'),
+  };
+}
+
 function parseCoachOutput(rawText) {
   const fallback = {
-    improvedPrompt: removeForbiddenClaims(rawText),
+    improvedPrompt: FALLBACK_RECOVERY_PROMPT,
     questions: [],
     checklist: ['Validá que el objetivo esté claro', 'Confirmá restricciones importantes', 'Revisá que no incluya secretos'],
     strategy: FALLBACK_STRATEGY,
@@ -65,7 +238,7 @@ function parseCoachOutput(rawText) {
       recommendedActions: limitList(parsed.recommendedActions, 3),
     };
   } catch (_error) {
-    return fallback;
+    return recoverCoachOutput(rawText, fallback);
   }
 }
 
@@ -195,6 +368,7 @@ module.exports = {
   FALLBACK_STRATEGY,
   FALLBACK_QUALITY_SCORE,
   FALLBACK_NO_CONTEXT_GAPS,
+  FALLBACK_RECOVERY_PROMPT,
   buildCoachInput,
   buildRefinementInput,
   buildVariantInput,

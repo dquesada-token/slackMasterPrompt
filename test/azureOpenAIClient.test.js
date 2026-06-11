@@ -41,7 +41,7 @@ test('buildAzureOpenAIResponseRequest configures reasoning effort and enough out
   assert.deepEqual(request.reasoning, { effort: 'high' });
   assert.equal(request.instructions, 'Sistema');
   assert.equal(request.input, 'Usuario');
-  assert.equal(request.max_output_tokens >= 1800, true);
+  assert.equal(request.max_output_tokens >= 4000, true);
   assert.equal(request.text.format.type, 'json_schema');
   assert.equal(request.text.format.strict, true);
 });

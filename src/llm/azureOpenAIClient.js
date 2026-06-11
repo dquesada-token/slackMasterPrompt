@@ -44,7 +44,7 @@ function buildAzureOpenAIResponseRequest({ model, reasoningEffort, instructions,
     model,
     instructions,
     input,
-    max_output_tokens: 2000,
+    max_output_tokens: 4000,
     text: {
       format: {
         type: 'json_schema',

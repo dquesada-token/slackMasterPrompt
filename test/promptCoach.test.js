@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
+  FALLBACK_RECOVERY_PROMPT,
   buildCoachInput,
   createPromptCoach,
   formatCoachResponse,
@@ -75,6 +76,24 @@ test('parseCoachOutput accepts JSON and removes forbidden repo-review claims', (
   assert.equal(parsed.qualityScore, 61);
   assert.deepEqual(parsed.detectedIssues, ['Falta alcance']);
   assert.deepEqual(parsed.recommendedActions, ['refine_add_constraints']);
+});
+
+test('parseCoachOutput recovers structured fields from truncated JSON output', () => {
+  const parsed = parseCoachOutput('{"improvedPrompt":"Actuá como Codex y proponé cambios incrementales.\\nNo asumas acceso a código, repositorios, archivos o PRs.","questions":["¿Qué router usa el proyecto?"],"checklist":["No incluir secretos"],"strategy":"Recuperación defensiva","detectedIssues":["Falta stack"],"recommendedActions":["refine_add_constraints"]');
+
+  assert.equal(parsed.improvedPrompt, 'Actuá como Codex y proponé cambios incrementales.\nNo asumas acceso a código, repositorios, archivos o PRs.');
+  assert.deepEqual(parsed.questions, ['¿Qué router usa el proyecto?']);
+  assert.deepEqual(parsed.checklist, ['No incluir secretos']);
+  assert.equal(parsed.strategy, 'Recuperación defensiva');
+  assert.deepEqual(parsed.detectedIssues, ['Falta stack']);
+  assert.deepEqual(parsed.recommendedActions, ['refine_add_constraints']);
+});
+
+test('parseCoachOutput does not leak raw JSON when recovery is impossible', () => {
+  const parsed = parseCoachOutput('text {"improvedPrompt": ');
+
+  assert.equal(parsed.improvedPrompt, FALLBACK_RECOVERY_PROMPT);
+  assert.doesNotMatch(parsed.improvedPrompt, /"improvedPrompt"|^\s*\{/);
 });
 
 test('createPromptCoach calls the generator and formats the generated result', async () => {
